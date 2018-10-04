@@ -1,5 +1,6 @@
 
 import boto3
+import time
 import os
 
 # VPC B
@@ -81,10 +82,14 @@ def detach_access_interface_from_A():
         exit_with_error(error)
 
     try:
-        access_interface.detach(False, True)
+        if (access_interface.status == 'in-use'):
+            access_interface.detach(False, True)
     except Exception as e:
         error = "Unable to detach access network interface. Exception: " + str(e)
         exit_with_error(error)
+
+    if (access_interface.status == 'in-use'):
+        time.sleep(10)
 
     print ("Detach Access Interface ... [ SUCCESS ]")
     return
@@ -189,8 +194,8 @@ def create_instance_B_from_snapshot():
 
 # Lambda callback
 def lambda_handler(event, context):
-    power_off_instance_A()
     detach_access_interface_from_A()
+    power_off_instance_A()
     disassociate_elastic_ip_from_A()
     associate_elastic_ip_to_B()
     create_instance_B_from_snapshot()
