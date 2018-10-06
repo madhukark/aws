@@ -89,7 +89,7 @@ def detach_access_interface_from_A():
         exit_with_error(error)
 
     if (access_interface.status == 'in-use'):
-        time.sleep(10)
+        time.sleep(5)
 
     print ("Detach Access Interface ... [ SUCCESS ]")
     return

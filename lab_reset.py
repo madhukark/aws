@@ -1,5 +1,6 @@
 
 import boto3
+import time
 import pprint
 import os
 
@@ -78,7 +79,7 @@ def get_private_ip(interface_name):
 
 
 # Get association ID of an Elastic IP
-def get_association(elastic_ip):
+def get_association_id(elastic_ip):
     ec2 = boto3.client('ec2')
     try:
         response = ec2.describe_addresses(
@@ -98,7 +99,7 @@ def get_association(elastic_ip):
 
 
 # Get allocation ID of an Elastic IP
-def get_allocation(elastic_ip):
+def get_allocation_id(elastic_ip):
     ec2 = boto3.client('ec2')
     try:
         response = ec2.describe_addresses(
@@ -134,7 +135,7 @@ def power_off_instance(instance_name):
     if (state != 'stopped'):
         try:
             ec2 = boto3.client('ec2', region_name = region)
-            ec2.stop_instances([instance_id])
+            ec2.stop_instances(InstanceIds=[instance_id])
         except Exception as e:
             error = "Cannot stop instance " + instance_name + ". Exception: " + str(e)
             exit_with_error(error)
@@ -146,7 +147,7 @@ def power_off_instance(instance_name):
 
 # Detach an interface. Doesnt matter which Instance its associated with.
 # NOTE: Assumes its a secondary interface
-def detach_interface_from_instance(interface_name)
+def detach_interface(interface_name):
     interface_id = get_interface_id(interface_name)
     ec2 = boto3.resource('ec2')
     try:
@@ -156,9 +157,14 @@ def detach_interface_from_instance(interface_name)
         exit_with_error(error)
 
     try:
-        access_interface.detach(False, True) # Dryrun, Force
+        if (access_interface.status == "in-use"):
+            access_interface.detach(False, True) # Dryrun, Force
     except Exception as e:
-        error = "Unable to detach interface " + interface_name + " with ID " + interface_id " +. Exception: " + str(e)
+        error = "Unable to detach interface " + interface_name + " with ID " + interface_id + ". Exception: " + str(e)
+        exit_with_error(error)
+
+    if (access_interface.status == "in-use"):
+        time.sleep(5)
 
     msg = " Detach Network Interface : " + interface_name + " ... [ SUCCESS ]"
     print msg
@@ -166,12 +172,12 @@ def detach_interface_from_instance(interface_name)
 
 
 # Disassociate an Elastic IP from an instance/interface
-def disassociate_elastic_IP(elastic_ip):
+def disassociate_elastic_ip(elastic_ip):
     association_id = get_association_id(elastic_ip)
 
     ec2 = boto3.client('ec2')
     try:
-        response = ec2.disassociate_address(AllocationId=allocation_id)
+        response = ec2.disassociate_address(AssociationId=association_id)
     except Exception as e:
         error = "Unable to disassociate elastic IP " + elastic_ip + ". Exception: " + str(e)
         exit_with_error(error)
@@ -182,10 +188,10 @@ def disassociate_elastic_IP(elastic_ip):
 
 
 # Associate an Elastic IP to an Instance/Interface
-def associate_elastic_IP(elastic_ip, interface_name):
+def associate_elastic_ip(elastic_ip, interface_name):
     allocation_id = get_allocation_id(elastic_ip)
     interface_id = get_interface_id(interface_name)
-    private_ip_address = get_private_ip(interface_name)
+    private_ip = get_private_ip(interface_name)
 
     ec2 = boto3.client('ec2')
     try:
@@ -240,7 +246,7 @@ def power_on_instance(instance_name):
     if (state != 'running'):
         try:
             ec2 = boto3.client('ec2', region_name = region)
-            ec2.start_instances([instance_id])
+            ec2.start_instances(InstanceIds=[instance_id])
         except Exception as e:
             error = "Cannot start instance " + instance_name + ". Exception: " + str(e)
             exit_with_error(error)    
@@ -250,11 +256,36 @@ def power_on_instance(instance_name):
     return
 
 
+# Terminate an instance
+def terminate_instance(instance_name):
+    instance_id = get_instance_id(instance_name)
+    try:
+        ec2 = boto3.resource('ec2')
+        instance = ec2.Instance(instance_id)
+        state = instance.state['Name']
+    except Exception as e:
+        error = "Exception while fetching instance state: " + str(e)
+        exit_with_error(error)
+
+    try:
+        ec2 = boto3.client('ec2', region_name = region)
+        ec2.terminate_instances(InstanceIds=[instance_id])
+    except Exception as e:
+        error = "Cannot mark instance " + instance_name + " with instance ID " + instance_id + " for termination. Exception: " + str(e)
+        exit_with_error(error)
+
+    msg = "Termination of instance " + instance_name + " ... [ SUCCESS ]"
+    print msg
+    return
+
+
 # Lambda callback
 def lambda_handler(event, context):
-    power_off_instance('nsg-A')
-#    detach_access_interface(access_eni, instance)
-#    disassociate_elastic_ip(elastic_ip)
-#    associate_elastic_ip(elastic_ip, uplink_eni_nsg_A)
-#    attach_access_interface(access_eni, instance)
+#    detach_interface('nsgb-access')
+#    power_off_instance('Resilient-NSG')
+#    disassociate_elastic_ip('18.235.97.139')
+#    associate_elastic_ip('18.235.97.139', 'nsgb-uplink-a')
+#    attach_interface_to_instance('nsgb-access', 'nsg-B')
+#    power_on_instance('nsg-B')
+#    terminate_instance('Resilient-NSG')
     return "Success!"
