@@ -121,7 +121,6 @@ def get_allocation_id(elastic_ip):
 # Power OFF instance
 def power_off_instance(instance_name):
     instance_id = get_instance_id(instance_name)
-    print instance_id
     instance = ""
     state = ""
     try:
@@ -268,8 +267,8 @@ def terminate_instance(instance_name):
         exit_with_error(error)
 
     try:
-        ec2 = boto3.client('ec2', region_name = region)
-        ec2.terminate_instances(InstanceIds=[instance_id])
+         ec2 = boto3.client('ec2', region_name = region)
+         ec2.terminate_instances(InstanceIds=[instance_id])
     except Exception as e:
         error = "Cannot mark instance " + instance_name + " with instance ID " + instance_id + " for termination. Exception: " + str(e)
         exit_with_error(error)
@@ -281,11 +280,12 @@ def terminate_instance(instance_name):
 
 # Lambda callback
 def lambda_handler(event, context):
-#    detach_interface('nsgb-access')
-#    power_off_instance('Resilient-NSG')
-#    disassociate_elastic_ip('18.235.97.139')
-#    associate_elastic_ip('18.235.97.139', 'nsgb-uplink-a')
-#    attach_interface_to_instance('nsgb-access', 'nsg-B')
-#    power_on_instance('nsg-B')
-#    terminate_instance('Resilient-NSG')
+    detach_interface('nsgb-access')
+    power_off_instance('Resilient-NSG')
+    disassociate_elastic_ip('18.235.97.139')
+    associate_elastic_ip('18.235.97.139', 'nsgb-uplink-a')
+    attach_interface_to_instance('nsgb-access', 'nsg-B')
+    power_on_instance('nsg-B')
+    terminate_instance('Resilient-NSG')
     return "Success!"
+

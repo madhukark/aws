@@ -83,12 +83,13 @@ def detach_access_interface_from_A():
 
     try:
         if (access_interface.status == 'in-use'):
-            access_interface.detach(False, True)
+            access_interface.detach()
     except Exception as e:
         error = "Unable to detach access network interface. Exception: " + str(e)
         exit_with_error(error)
 
     if (access_interface.status == 'in-use'):
+        print "Interface still in-use. Waiting for 10 secs..."
         time.sleep(5)
 
     print ("Detach Access Interface ... [ SUCCESS ]")
@@ -200,4 +201,3 @@ def lambda_handler(event, context):
     associate_elastic_ip_to_B()
     create_instance_B_from_snapshot()
     return "Success!"
-
