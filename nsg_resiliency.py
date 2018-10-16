@@ -128,7 +128,7 @@ def power_off_instance(instance_name, region_name):
 
     if (state != 'stopped'):
         try:
-            ec2 = boto3.client('ec2', region_name = region)
+            ec2 = boto3.client('ec2', region_name = region_name)
             ec2.stop_instances(InstanceIds=[instance_id])
         except Exception as e:
             error = "Cannot stop instance " + instance_name + ". Exception: " + str(e)
@@ -239,7 +239,7 @@ def power_on_instance(instance_name, region_name):
 
     if (state != 'running'):
         try:
-            ec2 = boto3.client('ec2', region_name = region)
+            ec2 = boto3.client('ec2', region_name = region_name)
             ec2.start_instances(InstanceIds=[instance_id])
         except Exception as e:
             error = "Cannot start instance " + instance_name + ". Exception: " + str(e)
@@ -249,6 +249,9 @@ def power_on_instance(instance_name, region_name):
     print msg
     return
 
+def reboot_instance(instance_name, region):
+    power_off_instance(instance_name, region)
+    power_on_instance(instance_name, region)
 
 # Terminate an instance
 def terminate_instance(instance_name, region_name):
@@ -275,8 +278,9 @@ def terminate_instance(instance_name, region_name):
 
 # Create Instance from Snapshot
 # NOTE: Creates with only the primary interface
-def create_instance(region_name, ami_id, instance_type, primary_interface_name, instance_name):
+def create_instance(region_name, ami_id, instance_type, primary_interface_name, secondary_interface_name, instance_name):
     primary_eni = get_interface_id(primary_interface_name)
+    secondary_eni = get_interface_id(secondary_interface_name)
     ec2 = boto3.client('ec2', region_name)
     try:
         response = ec2.run_instances(
@@ -294,6 +298,10 @@ def create_instance(region_name, ami_id, instance_type, primary_interface_name, 
                 {
                     'DeviceIndex': 0,
                     'NetworkInterfaceId': primary_eni,
+                },
+                {
+                    'DeviceIndex': 1,
+                    'NetworkInterfaceId': secondary_eni,
                 }
             ],
         )
@@ -328,16 +336,16 @@ def lambda_handler(event, context):
     security_group_id = 'sg-0509dc08db7a2036a'
     snapshot_ami_id = 'ami-0a29943124c318e2b'
     nsg_name = 'Resilient-NSG'
-    uplink_name = 'nsg_uplink_b'
+    uplink_name = 'nsgb-uplink-b'
     elastic_IP = '18.235.97.139'
-    access_interface_name = 'nsg_access'
+    access_interface_name = 'nsgb-access'
     old_nsg_name = 'nsg-B'
 
-    create_instance(region, snapshot_ami_id, instance_type, uplink_name, nsg_name)
     detach_interface(access_interface_name)
     disassociate_elastic_ip(elastic_IP)
     associate_elastic_ip(elastic_IP, uplink_name)
-    attach_interface_to_instance(access_interface_name, nsg_name)
-    power_off_instance(old_nsg_name)
+    create_instance(region, snapshot_ami_id, instance_type, uplink_name, access_interface_name, nsg_name)
+    power_off_instance(old_nsg_name, region)
 
     return "Success!"
+
