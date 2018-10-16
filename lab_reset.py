@@ -281,11 +281,11 @@ def terminate_instance(instance_name):
 # Lambda callback
 def lambda_handler(event, context):
     detach_interface('nsgb-access')
-    power_off_instance('Resilient-NSG')
     disassociate_elastic_ip('18.235.97.139')
     associate_elastic_ip('18.235.97.139', 'nsgb-uplink-a')
     attach_interface_to_instance('nsgb-access', 'nsg-B')
     power_on_instance('nsg-B')
+    power_off_instance('Resilient-NSG')
     terminate_instance('Resilient-NSG')
     return "Success!"
 
