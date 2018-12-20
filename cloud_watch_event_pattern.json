@@ -1,0 +1,17 @@
+{
+  "source": [
+    "aws.ec2"
+  ],
+  "detail-type": [
+    "EC2 Instance State-change Notification"
+  ],
+  "detail": {
+    "state": [
+      "shutting-down",
+      "stopping"
+    ],
+    "instance-id": [
+      "i-0fcf1cf2c675fca1e"
+    ]
+  }
+}
